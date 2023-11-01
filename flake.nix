@@ -4,6 +4,14 @@
     vscoq.url = "github:coq-community/vscoq";
     flake-utils.follows = "nix-vscode-extensions/flake-utils";
     nixpkgs.follows = "nix-vscode-extensions/nixpkgs";
+    coq-8_18 = {
+      type = "github";
+      owner = "coq";
+      repo = "coq";
+      ref = "V8.18.0";
+    };
+
+    coq-8_18.inputs.nixpkgs.follows = "nixpkgs";
   };
 
   outputs = inputs:
@@ -25,7 +33,7 @@
           devShells.default = pkgs.mkShell {
             buildInputs = [
               packages.default
-              pkgs.coq
+              inputs.coq-8_18.defaultPackage.${system}
               inputs.vscoq.packages.${system}.vscoq-language-server
             ];
             shellHook = ''
