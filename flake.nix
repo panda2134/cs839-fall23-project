@@ -16,10 +16,7 @@
 
           packages.default =
             vscode-with-extensions.override {
-              vscode = vscodium.fhsWithPackages (ps: [
-                ps.coq
-                inputs.vscoq.packages.${system}.vscoq-language-server
-              ]);
+              vscode = vscodium;
               vscodeExtensions = [
                 extensions.vscode-marketplace.maximedenes.vscoq
               ];
