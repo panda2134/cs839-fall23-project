@@ -35,6 +35,7 @@
               packages.default
               inputs.coq-8_18.defaultPackage.${system}
               inputs.vscoq.packages.${system}.vscoq-language-server
+              (inputs.nixpkgs.legacyPackages.${system}.coqPackages.callPackage ./stdpp.nix {})
             ];
             shellHook = ''
               printf "VSCodium with extensions:\n"
