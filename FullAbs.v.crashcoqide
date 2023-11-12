@@ -158,6 +158,13 @@ Example CE1: evalInstr (compileStmt (LetX (Num 1) (LetX (Num 2) (Write VarX)))) 
 Proof. simpl. reflexivity.
 Qed.
 
+Function stackTop (xs: option (list Z)): option Z :=
+  match xs with
+  | None => None
+  | Some(nil) => None
+  | Some(x :: rest) => Some(x)
+  end.
+
 Lemma step_correct_expr: forall e: Expr, forall x0 y0: Z, forall progs: list Instr, forall st: list Z,
   (evalInstr ((compileExpr e) ++ progs) st x0 y0) = (evalInstr progs ((evalExpr e x0 y0) :: st) x0 y0).
 Proof.
@@ -200,70 +207,57 @@ Proof.
   - (*LetX*) simpl.
     intros x0 y0 progs st.
     repeat rewrite <- app_assoc.
-    simpl in IHs. rewrite -> step_correct_expr. simpl. rewrite <- app_assoc. rewrite IHs. simpl.
-    reflexivity.
-  - (*LetY*) simpl.
-    intros x0 y0 progs st.
-    repeat rewrite <- app_assoc.
-    simpl in IHs. rewrite -> step_correct_expr. simpl. rewrite <- app_assoc. rewrite IHs. simpl.
-    reflexivity.
-  - (*Write*) simpl.
-    intros x0 y0 progs st.
-    assert (((compileExpr e ++ [IWrite; IPop]) ++ progs) = (compileExpr e ++ [IWrite; IPop] ++ progs)) as H.
-    + rewrite app_assoc. reflexivity.
-    + rewrite H. rewrite step_correct_expr. simpl. destruct (evalInstr progs st x0 y0) as [p|].
-      * destruct p. reflexivity.
-      * reflexivity.
-  - (*Seq*) simpl in IHs1. simpl in IHs2. intros x0 y0 progs st. simpl.
-    rewrite <- app_assoc. rewrite IHs1. destruct_with_eqn (evalInstr (compileStmt s2 ++ progs) st x0 y0).
-    destruct_with_eqn (evalInstr progs st x0 y0).
-    + specialize (IHs2 x0 y0 progs st). rewrite Heqo in IHs2. rewrite Heqo0 in IHs2.
-      destruct_with_eqn p. destruct_with_eqn p0. rewrite <- app_assoc. inversion IHs2.
-      reflexivity.
-    + destruct p. exfalso. specialize (IHs2 x0 y0 progs st). rewrite Heqo in IHs2. rewrite Heqo0 in IHs2. inversion IHs2.
-    + specialize (IHs2 x0 y0 progs st). rewrite Heqo in IHs2. destruct_with_eqn (evalInstr progs st x0 y0).
-      ++ destruct_with_eqn p. exfalso. inversion IHs2.
-      ++ reflexivity.
-Qed.
+    simpl in IHs. rewrite -> step_correct_expr. rewrite IHs.
 
-Theorem compiler_correct: forall s: Stmt, forall x0 y0: Z, exists st': list Z,
-  evalInstr (compileStmt s) [] x0 y0 = Some(st', evalStmt s x0 y0).
+Theorem compiler_correct: forall e: Expr, forall x0 y0: Z,
+  Some(evalExpr e x0 y0) = stackTop (evalInstr (compile e) [] x0 y0).
 Proof.
-  assert (forall s: Stmt, forall x0 y0: Z,
-      evalInstr (compileStmt s ++ []) [] x0 y0 = evalInstr (compileStmt s) [] x0 y0).
+  assert (forall e: Expr, forall x0 y0: Z,
+      evalInstr (compile e ++ []) [] x0 y0 = evalInstr (compile e) [] x0 y0).
   - intros. rewrite app_nil_r. reflexivity.
-  - intros. rewrite <- H. destruct_with_eqn (evalInstr (compileStmt s ++ []) [] x0 y0).
-    + destruct p eqn:Hp. pose proof (step_correct_stmt s x0 y0 [] []) as HC. rewrite Heqo in HC. simpl in HC. rewrite app_nil_r in HC.
-      inversion HC. exists l. rewrite <- H1. reflexivity.
-    + exfalso. destruct (evalInstr (compileStmt s ++ []) [] x0 y0) eqn:? in Heqo.
-      ++ inversion Heqo.
-      ++ pose proof (step_correct_stmt s x0 y0 [] []) as HC. rewrite Heqo0 in HC. simpl in HC. inversion HC.
+  - intros. rewrite <- H. rewrite step_correct. reflexivity.
 Qed.
 
 (* TODO: allow infinite registers by changing state from (x, y) into a dict *)
 
-Inductive StmtContext: Type :=
-    CHole: StmtContext
-  | CWrite: Expr -> StmtContext
-  | CLetX: Expr -> StmtContext -> StmtContext
-  | CLetY: Expr -> StmtContext -> StmtContext
-  | CSeqL: StmtContext -> Stmt -> StmtContext
-  | CSeqR: Stmt -> StmtContext -> StmtContext
+Inductive ExprContext: Type :=
+    CNum: Z -> ExprContext
+  | CHole: ExprContext
+  | CVarX: ExprContext
+  | CVarY: ExprContext
+  | CPlusL: ExprContext -> Expr -> ExprContext
+  | CPlusR: Expr -> ExprContext -> ExprContext
+  | CMinusL: ExprContext -> Expr -> ExprContext
+  | CMinusR: Expr -> ExprContext -> ExprContext
+  | CLetXL: ExprContext -> Expr -> ExprContext
+  | CLetXR: Expr -> ExprContext -> ExprContext
+  | CLetYL: ExprContext -> Expr -> ExprContext
+  | CLetYR: Expr -> ExprContext -> ExprContext
+  | CIteZero1: ExprContext -> Expr -> Expr -> ExprContext
+  | CIteZero2: Expr -> ExprContext -> Expr -> ExprContext
+  | CIteZero3: Expr -> Expr -> ExprContext -> ExprContext
   .
 
-Fixpoint link_to_context (s: Stmt) (ctx: StmtContext): Stmt :=
+Fixpoint link_to_context (e: Expr) (ctx: ExprContext): Expr :=
   match ctx with
-  | CWrite e => (Write e)
-  | CHole => s
-  | CLetX e ctx' => LetX e (link_to_context s ctx')
-  | CLetY e ctx' => LetY e (link_to_context s ctx')
-  | CSeqL ctx' s' => Seq (link_to_context s ctx') s'
-  | CSeqR s' ctx' => Seq s' (link_to_context s ctx')
+  | CNum n => (Num n)
+  | CHole => e
+  | CVarX => (VarX)
+  | CVarY => (VarY)
+  | CPlusL e1 e2 => Plus (link_to_context e e1) e2
+  | CPlusR e1 e2 => Plus e1 (link_to_context e e2)
+  | CMinusL e1 e2 => Minus (link_to_context e e1) e2
+  | CMinusR e1 e2 => Minus e1 (link_to_context e e2)
+  | CLetXL e1 e2 => LetX (link_to_context e e1) e2
+  | CLetXR e1 e2 => LetX e1 (link_to_context e e2)
+  | CLetYL e1 e2 => LetY (link_to_context e e1) e2
+  | CLetYR e1 e2 => LetY e1 (link_to_context e e2)
+  | CIteZero1 e1 e2 e3 => IteZero (link_to_context e e1) e2 e3
+  | CIteZero2 e1 e2 e3 => IteZero e1 (link_to_context e e2) e3
+  | CIteZero3 e1 e2 e3 => IteZero e1 e2 (link_to_context e e3)
   end.
 
-Example LE1: (evalInstr (compileStmt (link_to_context (Write VarX) (CLetX (Num 1) (CSeqR (Write VarX) (CLetX (Num 2) CHole))))) [] 99%Z 99%Z)
-           = Some([], [1%Z; 2%Z]).
-Proof. auto.
+Example LinkE1: link_to_context (Num 3) (CPlusL (CMinusR VarX CHole) (Num 2)) = (Plus (Minus VarX (Num 3)) (Num 2)).
+Proof. simpl. reflexivity.
 Qed.
-
 
