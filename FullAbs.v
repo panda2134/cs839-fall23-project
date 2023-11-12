@@ -266,4 +266,47 @@ Example LE1: (evalInstr (compileStmt (link_to_context (Write VarX) (CLetX (Num 1
 Proof. auto.
 Qed.
 
+Definition context_equivalence_instr (p1 p2: list Instr): Prop :=
+  forall c1 c2: list Instr, forall st: list Z, forall x y: Z,
+    (evalInstr (c1 ++ p1 ++ c2) st x y) = (evalInstr (c1 ++ p2 ++ c2) st x y).
+
+Definition context_equivalence_stmt (s1 s2: Stmt): Prop :=
+  forall ctx: StmtContext, forall x y: Z,
+    (evalStmt (link_to_context s1 ctx) x y) = (evalStmt (link_to_context s2 ctx) x y).
+
+(* Part 1 of full abstraction *)
+Theorem equivalence_reflection: forall p1 p2: list Instr, forall s1 s2: Stmt,
+  (compileStmt s1 = p1) /\ (compileStmt s2 = p2) /\ (context_equivalence_instr p1 p2) -> (context_equivalence_stmt s1 s2).
+Proof.
+  intros. destruct H as [H1]. destruct H as [H2].
+  unfold context_equivalence_instr in H.
+  unfold context_equivalence_stmt. intros.
+  revert y. revert x.
+
+  assert (forall X: Type, forall a b c: list X, a = b -> a ++ c = b ++ c) as app_elim_r.
+  induction c.
+  intros. repeat rewrite app_nil_r. easy.
+  intros. rewrite <- rev_involutive. rewrite distr_rev.
+    rewrite <- (rev_involutive (a ++ a0 :: c)). rewrite distr_rev. rewrite H0. easy.
+
+  assert (forall X: Type, forall a b c: list X, a = b -> c ++ a = c ++ b) as app_elim_l.
+  intros. induction c.
+  easy. repeat rewrite <- app_comm_cons. rewrite IHc. easy.
+
+  induction ctx.
+  + intros. unfold link_to_context.
+    pose proof (compiler_correct s1 x y) as HC1. destruct HC1 as [st1]. rewrite H1 in H0.
+    pose proof (compiler_correct s2 x y) as HC2. destruct HC2 as [st2]. rewrite H2 in H3.
+    assert (forall p: list Instr, p = [] ++ p ++ []).
+    intros. rewrite app_nil_r. rewrite app_nil_l. reflexivity.
+
+    assert (evalInstr p1 [] x y = evalInstr p2 [] x y).
+    rewrite (H4 p1). rewrite (H4 p2).
+    apply (H [] []). rewrite H0 in H5. rewrite H3 in H5. inversion H5. easy.
+  + simpl. easy.
+  + simpl. intros. apply (IHctx (evalExpr e x y) y).
+  + simpl. intros. apply (IHctx x (evalExpr e x y)).
+  + simpl. intros. apply app_elim_r. apply IHctx.
+  + simpl. intros. apply app_elim_l. apply IHctx.
+Qed.
 
