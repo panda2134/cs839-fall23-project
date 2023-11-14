@@ -312,11 +312,14 @@ Qed.
   (* 
 Fixpoint context_back_translation (c1 c2: list Instr) (st: list Z) (x y: Z) -> StmtContext :=
   
-
+*)
 (* Part 2 of full abstraction *)
 Theorem equivalence_preservation: forall p1 p2: list Instr, forall s1 s2: Stmt,
   (compileStmt s1 = p1) /\ (compileStmt s2 = p2) /\ (context_equivalence_stmt s1 s2) -> (context_equivalence_instr p1 p2).
 Proof.
   intros. destruct H as [H1]. destruct H as [H2].
   unfold context_equivalence_stmt in H.
-  unfold context_equivalence_instr. intros c1 c2 st. *)
+  unfold context_equivalence_instr.
+  (* TODO: This cannot be proven because it's false!
+           A counterexample (where c1 causes stack underflow) actually exists! *)
+Abort.
