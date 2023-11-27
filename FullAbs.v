@@ -335,19 +335,12 @@ Proof.
     - simpl. intros. destruct st'. easy. destruct st'. easy. rewrite IHc1. easy.
 Qed.
 
->>>>>>> 58c17dc (attempting on equiv preservation)
 (* Part 2 of full abstraction *)
 Theorem equivalence_preservation: forall p1 p2: list Instr, forall s1 s2: Stmt,
   (compile_stmt s1 = p1) /\ (compile_stmt s2 = p2) /\ (context_equivalence_stmt s1 s2) -> (context_equivalence_instr p1 p2).
 Proof.
   intros. destruct H as [H1 [H H2]].
   unfold context_equivalence_stmt in H.
-<<<<<<< HEAD
-  unfold context_equivalence_instr.
-  (* TODO: This cannot be proven because it's false!
-           A counterexample (where c1 causes stack underflow) actually exists! *)
-Abort.
-=======
   unfold context_equivalence_instr. intros c1 c2 st.
   apply prefix_removal. intros. unfold context_equivalence_stmt in H2.
   pose proof (H2 CHole x y) as H3. unfold link_to_context in H3.
