@@ -271,6 +271,15 @@ Example LE1: (evalInstr (compile_stmt (link_to_context (Write VarX) (CLetX (Num 
 Proof. auto.
 Qed.
 
+Definition instr_trace_equiv (t1 t2: option (list Z * list Z * (Z * Z))): Prop :=
+    (exists f0 f1 ans: list Z, exists r0 r1: Z*Z, 
+      (t1 = Some(f0, ans, r0)) /\ (t2 = Some(f1, ans, r1)))
+    \/ (t1 = None /\ t2 = None).
+
+Definition context_equivalence_instr' (p1 p2: list Instr): Prop :=
+  forall c1: list Instr, forall st: list Z, forall x y: Z,
+    instr_trace_equiv (evalInstr (c1 ++ p1) st x y) (evalInstr (c1 ++ p2) st x y).
+
 Definition context_equivalence_instr (p1 p2: list Instr): Prop :=
   forall c1 c2: list Instr, forall st: list Z, forall x y: Z,
     (evalInstr (c1 ++ p1 ++ c2) st x y) = (evalInstr (c1 ++ p2 ++ c2) st x y).
@@ -279,7 +288,9 @@ Definition context_equivalence_stmt (s1 s2: Stmt): Prop :=
   forall ctx: StmtContext, forall x y: Z,
     (evalStmt (link_to_context s1 ctx) x y) = (evalStmt (link_to_context s2 ctx) x y).
 
+
 (* Part 1 of full abstraction *)
+(* TODO: switch to use instr' *)
 Theorem equivalence_reflection: forall p1 p2: list Instr, forall s1 s2: Stmt,
   (compile_stmt s1 = p1) /\ (compile_stmt s2 = p2) /\ (context_equivalence_instr p1 p2) -> (context_equivalence_stmt s1 s2).
 Proof.
@@ -315,16 +326,6 @@ Proof.
   + simpl. intros. apply app_elim_r. apply IHctx.
   + simpl. intros. apply app_elim_l. apply IHctx.
 Qed.
-
-Definition instr_trace_equiv (t1 t2: option (list Z * list Z * (Z * Z))): Prop :=
-    (exists f0 f1 ans: list Z, exists r0 r1: Z*Z, 
-      (t1 = Some(f0, ans, r0)) /\ (t2 = Some(f1, ans, r1)))
-    \/ (t1 = None /\ t2 = None).
-
-Definition context_equivalence_instr' (p1 p2: list Instr): Prop :=
-  forall c1: list Instr, forall st: list Z, forall x y: Z,
-    instr_trace_equiv (evalInstr (c1 ++ p1) st x y) (evalInstr (c1 ++ p2) st x y).
-
 
 Lemma prefix_removal: forall p1 p2 c1: list Instr,
   (forall st: list Z, forall x y: Z, instr_trace_equiv (evalInstr p1 st x y) (evalInstr p2 st x y)) -> 
@@ -368,10 +369,15 @@ Proof.
         easy. destruct IHc1''. easy.
       destruct IHc1' as [[f0 [f1 [ans [r0 [r1 [IHc2 IHc3]]]]]] | IHc1''].
       exfalso. easy. destruct IHc1''. rewrite H0. unfold instr_trace_equiv. right. easy.
-    - simpl. destruct st'. easy. intros. apply IHc1.
-    - simpl. intros. destruct st'. easy. apply IHc1.
-    - simpl. intros. destruct st'. easy. rewrite IHc1. easy.
-    - simpl. intros. destruct st'. easy. destruct st'. easy. rewrite IHc1. easy.
+    - intros. simpl. destruct st'. unfold instr_trace_equiv. right. easy. apply IHc1.
+    - intros. simpl. destruct st'. unfold instr_trace_equiv. right. easy. apply IHc1.
+    - intros. simpl. destruct st'. unfold instr_trace_equiv. right. easy. apply IHc1.
+    - intros. simpl. apply IHc1.
+    - intros. simpl. apply IHc1.
+    - intros. simpl. apply IHc1.
+    - intros. simpl. destruct st'. unfold instr_trace_equiv. right. easy. apply IHc1.
+    - intros. simpl. destruct st'. unfold instr_trace_equiv. right. easy.
+      destruct st' eqn:?. unfold instr_trace_equiv. right. easy. apply IHc1.
 Qed.
 
 (* Part 2 of full abstraction *)
@@ -387,18 +393,10 @@ Proof.
   rewrite H1 in Hs1. rewrite H in Hs2. rewrite H3 in Hs1.
   destruct Hs1 as [st' [x0' [y0' Hs1]]].
   destruct Hs2 as [st'' [x0'' [y0'' Hs2]]].
-  rewrite 
-Abort.
-
-Lemma stack_bot_elim: forall p: list Instr, forall s: Stmt, forall x y x1 y1 x2 y2: Z, forall st0 st1 st2 o1 o2: list Z,
-  (p = compile_stmt s) /\ (evalInstr p [] x y = Some(st1, o1, (x1, y1))) /\ (evalInstr p st0 x y = Some (st2, o2, (x2, y2)))
-  -> (o1 = o2).
-Proof.
-  intros. destruct H as [H0 [H1 H2]]. induction s.
-  - rewrite H0 in H1. rewrite H0 in H2. simpl in H1. simpl in H2.
-    apply IHs.
-Abort.
-
+  rewrite Hs1. rewrite Hs2. unfold instr_trace_equiv. left.
+  exists st'. exists st''. exists (evalStmt s2 x y). exists (x0', y0'). exists (x0'', y0'').
+  easy. 
+Qed.
 
 
 
