@@ -338,23 +338,22 @@ Proof.
     - simpl. intros. destruct st'. easy. destruct st'. easy. rewrite IHc1. easy.
 Qed.
 
-Definition weak_context_equivalence_instr (p1 p2: list Instr): Prop :=
-  forall c1: list Instr, forall st: list Z, forall x y: Z,
-    (evalInstr (c1 ++ p1) st x y) = (evalInstr (c1 ++ p2) st x y).
-
+Definition context_equivalence_instr' (p1 p2: list Instr): Prop :=
+  forall c1 c2: list Instr, forall st: list Z, forall x y: Z,
+    (evalInstr (c1 ++ p1 ++ c2) st x y) = (evalInstr (c1 ++ p2 ++ c2) st x y).
 
 (* Part 2 of full abstraction *)
-Theorem weak_equivalence_preservation: forall p1 p2: list Instr, forall s1 s2: Stmt,
-  (compile_stmt s1 = p1) /\ (compile_stmt s2 = p2) /\ (context_equivalence_stmt s1 s2) -> (weak_context_equivalence_instr p1 p2).
+Theorem equivalence_preservation: forall p1 p2: list Instr, forall s1 s2: Stmt,
+  (compile_stmt s1 = p1) /\ (compile_stmt s2 = p2) /\ (context_equivalence_stmt s1 s2) -> (context_equivalence_instr p1 p2).
 Proof.
   intros. destruct H as [H1 [H H2]].
   unfold context_equivalence_stmt in H.
-  unfold weak_context_equivalence_instr. intros c1 c2 st.
+  unfold context_equivalence_instr. intros c1 c2 st.
   apply prefix_removal. intros. unfold context_equivalence_stmt in H2.
   pose proof (H2 CHole x y) as H3. unfold link_to_context in H3.
   pose proof (compiler_correct s1 x y st0) as Hs1. pose proof (compiler_correct s2 x y st0) as Hs2.
   rewrite H1 in Hs1. rewrite H in Hs2. rewrite H3 in Hs1.
-  
+  rewrite 
 Abort.
 
 Lemma stack_bot_elim: forall p: list Instr, forall s: Stmt, forall x y x1 y1 x2 y2: Z, forall st0 st1 st2 o1 o2: list Z,
