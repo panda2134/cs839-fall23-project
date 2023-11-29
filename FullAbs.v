@@ -574,8 +574,8 @@ Theorem full_abstraction': forall p1 p2: list Instr, forall s1 s2: Stmt,
   ((compile_stmt s1 = p1) /\ (compile_stmt s2 = p2)) -> ((context_equivalence_stmt s1 s2) <-> (context_equivalence_instr' p1 p2)).
 Proof.
   intros. split. 
-  - intros. apply (equivalence_preservation' p1 p2 s1 s2). split. easy. easy.
-  - intros. apply (equivalence_reflection' p1 p2 s1 s2). split. easy. easy.
+  - intros. apply (equivalence_preservation' p1 p2 s1 s2). split. all: easy.
+  - intros. apply (equivalence_reflection' p1 p2 s1 s2). split. all: easy.
 Qed.
 
 
